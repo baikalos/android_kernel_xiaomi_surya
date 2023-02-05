@@ -865,7 +865,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 #endif
 
 	/*if soc > 90 do not set fastcharge flag*/
-	rc = power_supply_get_property(chg->bms_psy,
+	/*rc = power_supply_get_property(chg->bms_psy,
 			POWER_SUPPLY_PROP_CAPACITY, &pval);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't get bms capacity:%d\n", rc);
@@ -876,9 +876,9 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 		smblib_dbg(chg, PR_MISC, "soc:%d is more than 90"
 			"do not setfastcharge mode\n", pval.intval);
 		enable = false;
-	}
+	}*/
 	/*if temp > 480 or temp < 150 do not set fastcharge flag*/
-	rc = power_supply_get_property(chg->bms_psy,
+	/*rc = power_supply_get_property(chg->bms_psy,
 					POWER_SUPPLY_PROP_TEMP, &pval);
 	if (rc < 0) {
 			smblib_err(chg, "Couldn't get bms capacity:%d\n", rc);
@@ -889,7 +889,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 			smblib_dbg(chg, PR_MISC, "temp:%d is abort"
 							"do not setfastcharge mode\n", pval.intval);
 			enable = false;
-	}
+	}*/
 
 	pval.intval = enable;
 	rc = power_supply_set_property(chg->bms_psy,
@@ -1524,6 +1524,13 @@ static int set_sdp_current(struct smb_charger *chg, int icl_ua)
 	u8 icl_options;
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+	if (force_fast_charge > 0 && icl_ua == USBIN_500MA)
+	{
+		icl_ua = USBIN_900MA;
+	}
+#endif
+
 	/* power source is SDP */
 	switch (icl_ua) {
 	case USBIN_100MA:
@@ -2116,9 +2123,11 @@ int smblib_vbus_regulator_is_enabled(struct regulator_dev *rdev)
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	val->intval
+	/*val->intval
 		= (get_client_vote(chg->usb_icl_votable, USER_VOTER) == 0)
-		 && get_client_vote(chg->dc_suspend_votable, USER_VOTER);
+		 && get_client_vote(chg->dc_suspend_votable, USER_VOTER);*/
+
+    val->intval	= (get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 0);
 	return 0;
 }
 
@@ -2644,10 +2653,10 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 		/*disable FFC when charge done*/
 		if (chg->support_ffc) {
 			smblib_dbg(chg, PR_OEM, "[%s] enter to set fastcharge mode, cap=%d\n", __func__, batt_capa.intval);
-			if ((smblib_get_fastcharge_mode(chg) == 1) && (batt_capa.intval > 90)) {
+			/*if ((smblib_get_fastcharge_mode(chg) == 1) && (batt_capa.intval > 90)) {
 				rc = smblib_set_fastcharge_mode(chg, false);
 				smblib_dbg(chg, PR_OEM, "[%s] set_fastcharge_mode to false!\n", __func__);
-			}
+			}*/
 		}
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 	}
@@ -2751,14 +2760,14 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 	int rc;
 
 	/* vote 0mA when suspended */
-	rc = vote(chg->usb_icl_votable, USER_VOTER, (bool)val->intval, 0);
+	/*rc = vote(chg->usb_icl_votable, USER_VOTER, (bool)val->intval, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
 		return rc;
-	}
+	}*/
 
-	rc = vote(chg->dc_suspend_votable, USER_VOTER, (bool)val->intval, 0);
+	/*rc = vote(chg->dc_suspend_votable, USER_VOTER, (bool)val->intval, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s DC rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
@@ -2766,7 +2775,14 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 	}
 
 	if (chg->use_bq_pump)
-		chg->bq_input_suspend = !!(val->intval);
+		chg->bq_input_suspend = !!(val->intval);*/
+
+    rc = vote(chg->chg_disable_votable, BYPASS_VOTER, (bool)val->intval, 0);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
+			(bool)val->intval ? "suspend" : "resume", rc);
+		return rc;
+	}
 
 	power_supply_changed(chg->batt_psy);
 	return rc;
