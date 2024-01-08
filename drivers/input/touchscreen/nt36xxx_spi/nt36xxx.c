@@ -76,6 +76,7 @@ extern void Boot_Update_Firmware(struct work_struct *work);
 
 #if defined(CONFIG_FB)
 static void nvt_ts_resume_work(struct work_struct *work);
+static void nvt_ts_suspend_work(struct work_struct *work);
 #ifdef _MSM_DRM_NOTIFY_H_
 static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long event, void *data);
 #else
@@ -1640,10 +1641,10 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	ts->xbuf = (uint8_t *)kzalloc((NVT_TRANSFER_LEN+1), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(ts->xbuf)) {
 		NVT_ERR("kzalloc for xbuf failed!\n");
-		//if (ts) {
+		if (ts) {
 			kfree(ts);
 			ts = NULL;
-		//}
+		}
 		return -ENOMEM;
 	}
 
@@ -1885,6 +1886,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		goto err_create_nvt_ts_workqueue_failed;
 	}
 	INIT_WORK(&ts->resume_work, nvt_ts_resume_work);
+	INIT_WORK(&ts->suspend_work, nvt_ts_suspend_work);
 #ifdef _MSM_DRM_NOTIFY_H_
 	ts->drm_notif.notifier_call = nvt_drm_notifier_callback;
 	ret = drm_register_client(&ts->drm_notif);
@@ -2376,6 +2378,10 @@ static void nvt_ts_resume_work(struct work_struct *work)
 {
 	nvt_ts_resume(&ts->client->dev);
 }
+static void nvt_ts_suspend_work(struct work_struct *work)
+{
+	nvt_ts_suspend(&ts->client->dev);
+}
 #ifdef _MSM_DRM_NOTIFY_H_
 static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
@@ -2394,14 +2400,16 @@ static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long 
 		if (event == DRM_EARLY_EVENT_BLANK) {
 			if (*blank == DRM_BLANK_POWERDOWN) {
 				NVT_LOG("suspend event=%lu, *blank=%d\n", event, *blank);
-				//cancel_work_sync(&ts->resume_work);
-				nvt_ts_suspend(&ts->client->dev);
+				cancel_work_sync(&ts->resume_work);
+                queue_work(ts->workqueue, &ts->suspend_work);
+				//nvt_ts_suspend(&ts->client->dev);
 			}
 		} else if (event == DRM_EVENT_BLANK) {
 			if (*blank == DRM_BLANK_UNBLANK) {
 				NVT_LOG("resume event=%lu, *blank=%d\n", event, *blank);
-				nvt_ts_resume(&ts->client->dev);
-				//queue_work(ts->workqueue, &ts->resume_work);
+				cancel_work_sync(&ts->suspend_work);
+                queue_work(ts->workqueue, &ts->resume_work);
+				//nvt_ts_resume(&ts->client->dev);
 			}
 		}
 	}

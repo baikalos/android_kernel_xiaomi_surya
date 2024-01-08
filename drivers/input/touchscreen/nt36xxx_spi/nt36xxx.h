@@ -122,6 +122,7 @@ struct nvt_ts_data {
 #if defined(CONFIG_FB)
 	struct workqueue_struct *workqueue;
 	struct work_struct resume_work;
+	struct work_struct suspend_work;
 #ifdef _MSM_DRM_NOTIFY_H_
 	struct notifier_block drm_notif;
 #else
