@@ -48,9 +48,9 @@
 #define NVT_SPI_NAME "NVT-ts"
 
 #if NVT_DEBUG
-#define NVT_LOG(fmt, args...)    pr_info("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
+#define NVT_LOG(fmt, args...)    pr_err("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
 #else
-#define NVT_LOG(fmt, args...)    pr_debug("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
+#define NVT_LOG(fmt, args...)    pr_info("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
 #endif
 #define NVT_ERR(fmt, args...)    pr_err("[%s] %s %d: " fmt, NVT_SPI_NAME, __func__, __LINE__, ##args)
 
@@ -122,7 +122,6 @@ struct nvt_ts_data {
 #if defined(CONFIG_FB)
 	struct workqueue_struct *workqueue;
 	struct work_struct resume_work;
-	struct work_struct suspend_work;
 #ifdef _MSM_DRM_NOTIFY_H_
 	struct notifier_block drm_notif;
 #else
