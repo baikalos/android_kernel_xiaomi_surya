@@ -3932,15 +3932,6 @@ static bool dsi_display_is_seamless_dfps_possible(
 			return false;
 	}
 
-
-    if( dynamic_refresh_rate != -1 ) {
-        if( cur->timing.refresh_rate == dynamic_refresh_rate ) {
-            return false;
-        }
-        if( dynamic_refresh_rate != tgt->timing.refresh_rate ) {
-            return false;
-        }
-    }
 	/* skip polarity comparison */
 
 	if (cur->timing.refresh_rate == tgt->timing.refresh_rate)
@@ -6657,8 +6648,8 @@ int dsi_display_get_panel_vfp(void *dsi_display,
 		refresh_rate = display->panel->cur_mode->timing.refresh_rate;
 
 	dsi_panel_get_dfps_caps(display->panel, &dfps_caps);
-	//if (dfps_caps.dfps_support)
-	//	refresh_rate = dfps_caps.max_refresh_rate;
+	if (dfps_caps.dfps_support && !refresh_rate)
+		refresh_rate = dfps_caps.max_refresh_rate;
 
 	if (!refresh_rate) {
 		mutex_unlock(&display->display_lock);

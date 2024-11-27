@@ -2221,9 +2221,9 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		NVT_LOG("Enabled touch wakeup gesture\n");
 	} else {
 		//---write command to enter "deep sleep mode"---
-		//buf[0] = EVENT_MAP_HOST_CMD;
-		//buf[1] = 0x11;
-		//CTP_SPI_WRITE(ts->client, buf, 2);
+		buf[0] = EVENT_MAP_HOST_CMD;
+		buf[1] = 0x11;
+		CTP_SPI_WRITE(ts->client, buf, 2);
 		NVT_LOG("power off, enter sleep mode\n");
 	}
 #else // WAKEUP_GESTURE

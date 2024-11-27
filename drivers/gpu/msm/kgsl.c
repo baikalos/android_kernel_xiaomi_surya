@@ -4966,6 +4966,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	int status = -EINVAL;
 	struct resource *res;
+	int cpu;
 
 	status = _register_device(device);
 	if (status)
@@ -5101,13 +5102,14 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 
 		qos->type = PM_QOS_REQ_AFFINE_CORES;
 		atomic_set(&qos->cpus_affine, device->pwrctrl.l2pc_cpus_mask);
+
 		pm_qos_add_request(&device->pwrctrl.l2pc_cpus_qos,
 				PM_QOS_CPU_DMA_LATENCY,
 				PM_QOS_DEFAULT_VALUE);
 	}
 
 	device->events_wq = alloc_workqueue("kgsl-events",
-		/*WQ_UNBOUND*/ WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
+		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
 
 	/* Initialize the snapshot engine */
 	kgsl_device_snapshot_init(device);
@@ -5253,10 +5255,10 @@ static int __init kgsl_core_init(void)
 	INIT_LIST_HEAD(&kgsl_driver.pagetable_list);
 
 	kgsl_driver.workqueue = alloc_workqueue("kgsl-workqueue",
-		/*WQ_UNBOUND*/ WQ_HIGHPRI | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
+		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
 
 	kgsl_driver.mem_workqueue = alloc_workqueue("kgsl-mementry",
-		/*WQ_UNBOUND*/ WQ_HIGHPRI | WQ_MEM_RECLAIM, 0);
+		WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
 
 	kthread_init_worker(&kgsl_driver.worker);
 

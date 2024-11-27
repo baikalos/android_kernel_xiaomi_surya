@@ -396,7 +396,7 @@
 				979200	424
 				1094400	470
 				1209600	621
-				1324800 671
+				1324800 676
 				1555200	973
 				1708800	1060
 				1843200	1298
@@ -457,7 +457,7 @@
 	};
 
 	chosen {
-		bootargs = "noirqdebug nodebugmon rcupdate.rcu_expedited=1 noirqdebug nodebugmon rcu_nocbs=0-7 kpti=off cgroup_disable=pressure";
+		bootargs = "rcupdate.rcu_expedited=1 rcupdate.rcu_normal_after_boot=1 rcu_nocbs=0-7 kpti=off quiet noirqdebug nodebugmon";
 	};
 
 	soc: soc { };
@@ -1808,7 +1808,7 @@
 				msm_cdsp_rm: qcom,msm_cdsp_rm {
 					compatible = "qcom,msm-cdsp-rm";
 					qcom,qos-cores = <0 1 2 3 4 5>;
-					qcom,qos-latency-us = <67>;
+					qcom,qos-latency-us = <44>;
 					qcom,qos-maxhold-ms = <20>;
 					qcom,compute-cx-limit-en;
 					qcom,compute-priority-mode = <2>;

@@ -442,7 +442,10 @@ static int bq2597x_enable_charge(struct bq2597x *bq, bool enable)
 	ret = bq2597x_update_bits(bq, BQ2597X_REG_0C,
 				BQ2597X_CHG_EN_MASK, val);
 
-    bq_info("bq2597x_enable_charge: %s\n", enable ? "enable" : "disable");
+    pr_info("bq2597x_enable_charge: %s\n", enable ? "enable" : "disable");
+    if( !enable ) {
+        dump_stack();
+    }
 
 	return ret;
 }
@@ -456,6 +459,7 @@ static int bq2597x_check_charge_enabled(struct bq2597x *bq, bool *enabled)
 	ret = bq2597x_read_byte(bq, BQ2597X_REG_0C, &val);
 	if (!ret)
 		*enabled = !!(val & BQ2597X_CHG_EN_MASK);
+    pr_info("bq2597x_check_charge_enabled: %s\n", *enabled ? "enabled" : "disabled");
 	return ret;
 }
 
@@ -1825,8 +1829,12 @@ static int bq2597x_charger_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
         pr_info("bq2597x_check_charge_enabled:%d - 1",bq->charge_enabled);
 		ret = bq2597x_check_charge_enabled(bq, &bq->charge_enabled);
-		val->intval = bq->charge_enabled;
         pr_info("bq2597x_check_charge_enabled:%d - 2, rc = %d",bq->charge_enabled, ret);
+		if( !ret ) { 
+            val->intval = bq->charge_enabled;
+        } else {
+            return -EINVAL;
+        }
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = 0;
@@ -1960,7 +1968,7 @@ static int bq2597x_charger_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		bq2597x_enable_charge(bq, val->intval);
 		bq2597x_check_charge_enabled(bq, &bq->charge_enabled);
-		bq_info("POWER_SUPPLY_PROP_CHARGING_ENABLED: %s\n",
+		pr_info("POWER_SUPPLY_PROP_CHARGING_ENABLED: %s\n",
 				val->intval ? "enable" : "disable");
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:

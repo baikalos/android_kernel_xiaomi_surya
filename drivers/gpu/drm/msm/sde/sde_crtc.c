@@ -68,7 +68,7 @@ static struct sde_crtc_custom_events custom_events[] = {
 };
 
 /* default input fence timeout, in ms */
-#define SDE_CRTC_INPUT_FENCE_TIMEOUT    20000
+#define SDE_CRTC_INPUT_FENCE_TIMEOUT    10000
 
 /*
  * The default input fence timeout is 2 seconds while max allowed
@@ -89,7 +89,7 @@ static struct sde_crtc_custom_events custom_events[] = {
  */
 #define DEFAULT_FPS_PERIOD_1_SEC	1000000
 #define MAX_FPS_PERIOD_5_SECONDS	5000000
-#define MAX_FRAME_COUNT			120
+#define MAX_FRAME_COUNT			1000
 #define MILI_TO_MICRO			1000
 
 /* default line padding ratio limitation */
@@ -4497,6 +4497,8 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 	if (cstate->sbuf_cfg.rot_op_mode != SDE_CTL_ROT_OP_MODE_INLINE_ASYNC)
 		if (_sde_crtc_commit_kickoff_rot(crtc, cstate))
 			is_error = true;
+
+	sde_vbif_clear_errors(sde_kms);
 
 	if (is_error) {
 		_sde_crtc_remove_pipe_flush(crtc);

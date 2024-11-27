@@ -89,10 +89,10 @@ extern const uint16_t gesture_key_array[];
 #define MP_UPDATE_HUAXING_FIRMWARE_NAME      "novatek_ts_huaxing_mp.bin"
 
 //---ESD Protect.---
-#define NVT_TOUCH_ESD_PROTECT 0
-#define NVT_TOUCH_ESD_CHECK_PERIOD 1500	/* ms */
-#define NVT_TOUCH_WDT_RECOVERY 0
-#define NVT_TOUCH_ESD_DISP_RECOVERY 0
+#define NVT_TOUCH_ESD_PROTECT 1
+#define NVT_TOUCH_ESD_CHECK_PERIOD 125	/* ms */
+#define NVT_TOUCH_WDT_RECOVERY 1
+#define NVT_TOUCH_ESD_DISP_RECOVERY 1
 
 //enable 'check touch vendor' feature
 #define CHECK_TOUCH_VENDOR
@@ -200,7 +200,7 @@ typedef enum {
 #define SPI_WRITE_MASK(a)	(a | 0x80)
 #define SPI_READ_MASK(a)	(a & 0x7F)
 
-#define DUMMY_BYTES (1)
+#define DUMMY_BYTES (7)
 #define NVT_TRANSFER_LEN	(63*1024)
 
 typedef enum {

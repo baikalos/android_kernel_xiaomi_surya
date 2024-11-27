@@ -66,7 +66,9 @@ static void scm_disable_sdi(void);
  * So the SDI cannot be re-enabled when it already by-passed.
  */
 static int download_mode = 1;
-static bool force_warm_reboot;
+static bool force_warm_reboot = true;
+
+module_param(force_warm_reboot, bool, 0664);
 
 static int in_panic;
 

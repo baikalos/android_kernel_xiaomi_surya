@@ -186,7 +186,7 @@ enum hvdcp3_type {
 #define TAPER_DECREASE_FCC_UA			50000
 #define TAPER_IBAT_TRH_HYS_UA			50000
 #define MIN_TAPER_FCC_THR_UA			2000000
-#define TAPER_BATT_CAPACITY_THR			5
+#define TAPER_BATT_CAPACITY_THR			99
 
 #define STEP_CHG_DELAYED_MONITOR_MS			10000
 #define STEP_CHG_DELAYED_QUICK_MONITOR_MS			2000
@@ -203,7 +203,7 @@ enum hvdcp3_type {
 /* ffc related */
 #define NON_FFC_VFLOAT_VOTER			"NON_FFC_VFLOAT_VOTER"
 #define NON_FFC_VFLOAT_UV			4450000
-#define PD_UNVERIFED_CURRENT		4800000
+#define PD_UNVERIFED_CURRENT		6800000
 /* used for bq charge pump solution */
 #define MAIN_CHARGER_ICL	2000000
 #define QC3_CHARGER_ICL		500000
@@ -630,6 +630,7 @@ struct smb_charger {
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;
 	int			system_temp_level;
+    int         active_system_temp_level;
 	int			thermal_levels;
 	int			*thermal_mitigation;
 	int			dcp_icl_ua;

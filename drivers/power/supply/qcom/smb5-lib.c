@@ -2594,7 +2594,8 @@ int smblib_get_prop_batt_awake(struct smb_charger *chg,
 int smblib_get_prop_system_temp_level(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
-	val->intval = chg->system_temp_level;
+	//val->intval = chg->system_temp_level;
+	val->intval = chg->active_system_temp_level;
 	return 0;
 }
 
@@ -3006,11 +3007,11 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 
 	/*backlight off and not-incall*/
 	if ((lct_backlight_off) && (LctIsInCall == 0) && (val->intval > LCT_THERM_LCDOFF_LEVEL)) {
-		pr_info("%s leve ignored:backlight_off:%d level:%d",__FUNCTION__,lct_backlight_off,val->intval);
+		pr_info("%s level ignored:backlight_off:%d level:%d",__FUNCTION__,lct_backlight_off,val->intval);
 	}
 
 	if ((LctIsInCall == 1) && (val->intval < LCT_THERM_CALL_LEVEL)) {
-		pr_info("%s leve ignored:LctIsInCall:%d level:%d",__FUNCTION__,LctIsInCall,val->intval);
+		pr_info("%s level ignored:LctIsInCall:%d level:%d",__FUNCTION__,LctIsInCall,val->intval);
         chg->system_temp_level = LCT_THERM_CALL_LEVEL;
 	} else {
     	chg->system_temp_level = val->intval;
@@ -3023,6 +3024,8 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 
     system_temp_level = baikalos_override_thermal_level(chg, chg->system_temp_level);
 
+    
+
     if( static_limited_current ) {
         if( chg->thermal_levels - 2 > system_temp_level ) system_temp_level = chg->thermal_levels-2;
         if( system_temp_level < 0 ) system_temp_level = 0;
@@ -3034,6 +3037,8 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 
 	pr_info("%s intval:%d system temp level:%d thermal_levels:%d",
 		__FUNCTION__,val->intval,system_temp_level,chg->thermal_levels);
+
+    chg->active_system_temp_level = system_temp_level;
 
 	if (system_temp_level >= chg->thermal_levels)
 		return vote(chg->chg_disable_votable,

@@ -91,11 +91,11 @@ enum pm_state {
 #define PPS_VOL_MAX			11000
 #define PPS_VOL_HYS			1000
 
-#define STEP_MV			20
+#define STEP_MV			25
 #define TAPER_VOL_HYS			50
-#define TAPER_WITH_IBUS_HYS			60
-#define TAPER_IBUS_THR			450
-#define BQ_TAPER_HYS_MV			10
+#define TAPER_WITH_IBUS_HYS			20
+#define TAPER_IBUS_THR			250
+#define BQ_TAPER_HYS_MV			1
 #define BQ_TAPER_DECREASE_STEP_MA			200
 struct sw_device {
 	bool charge_enabled;

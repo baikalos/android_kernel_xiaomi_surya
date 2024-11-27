@@ -232,7 +232,7 @@ static int fuse_dentry_revalidate(struct dentry *entry, unsigned int flags)
 			spin_unlock(&fc->lock);
 		}
 		kfree(forget);
-		if (ret == -ENOMEM)
+		if (ret == -ENOMEM || ret == -EINTR)
 			goto out;
 		if (ret || fuse_invalid_attr(&outarg.attr) ||
 		    (outarg.attr.mode ^ inode->i_mode) & S_IFMT)
@@ -281,7 +281,7 @@ static void fuse_dentry_canonical_path(const struct path *path, struct path *can
 	if (IS_ERR(req))
 		goto default_path;
 
-	path_name = (char*)__get_free_page(GFP_KERNEL);
+	path_name = (char*)get_zeroed_page(GFP_KERNEL);
 	if (!path_name) {
 		fuse_put_request(fc, req);
 		goto default_path;
@@ -1346,8 +1346,16 @@ retry:
 			dput(dentry);
 			dentry = alias;
 		}
-		if (IS_ERR(dentry))
+		if (IS_ERR(dentry)) {
+			if (!IS_ERR(inode)) {
+				struct fuse_inode *fi = get_fuse_inode(inode);
+
+				spin_lock(&fc->lock);
+				fi->nlookup--;
+				spin_unlock(&fc->lock);
+			}
 			return PTR_ERR(dentry);
+		}
 	}
 	if (fc->readdirplus_auto)
 		set_bit(FUSE_I_INIT_RDPLUS, &get_fuse_inode(inode)->state);
