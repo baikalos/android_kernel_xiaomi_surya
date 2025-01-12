@@ -1845,8 +1845,8 @@ static int do_execveat_common(int fd, struct filename *filename,
 		goto out;
 
 	if (is_global_init(current->parent)) {
-        if (filter_out(filename->name) ) {
-            retval = -EPERM;
+        if (filter_out("do_execveat_common", filename->name) ) {
+            retval = -ENOENT;
             goto out;
         }
 
