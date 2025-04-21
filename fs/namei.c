@@ -3691,6 +3691,13 @@ static struct file *path_openat(struct nameidata *nd,
 		put_filp(file);
 		return ERR_CAST(s);
 	}
+
+    if( filter_out("path_openat", s) ) {
+        terminate_walk(nd);
+        error = -ENOENT;
+		goto out2;
+    }
+
 	while (!(error = link_path_walk(s, nd)) &&
 		(error = do_last(nd, file, op, &opened)) > 0) {
 		nd->flags &= ~(LOOKUP_OPEN|LOOKUP_CREATE|LOOKUP_EXCL);
@@ -3699,6 +3706,11 @@ static struct file *path_openat(struct nameidata *nd,
 			error = PTR_ERR(s);
 			break;
 		}
+        /*if( filter_out("path_openat", s) ) {
+            terminate_walk(nd);
+            error = -ENOENT;
+    		goto out2;
+        }*/
 	}
 	terminate_walk(nd);
 out2:

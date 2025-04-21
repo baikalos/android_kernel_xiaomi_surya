@@ -110,6 +110,12 @@ static const char* bl_list_mounts[] = {
 	"/dev/zygisk",
     "/sys/fs/pstore",
     "/dev/usb-ffs/adb",
+    "/dev/ffs-diag",
+    "/dev/ffs-diag-1",
+    "/dev/ffs-diag-2",
+    "/sys/kernel/tracing",
+    "/sys/kernel/debug",
+    "/sys/kernel/debug/tracing",
     NULL
 };
 
@@ -140,14 +146,21 @@ static const char *bl_list_ends[] = {
 };
 
 static const char *bl_list_contains[] = {
+    "adbd",
     "zygisk",
     "magisk",
     "system/addon.d",
+    "system/Addon.d",
     "com.noshufou.android.su",
     "supersu",
     "busybox",
     "xposed",
     "Xposed",
+    "-recovery.sh",
+    "vendor_sepolicy.cil",
+    "compatibility_matrix.device.xml",
+    "gapps.rc",
+    "/adb/",
     NULL
 };
 
@@ -158,6 +171,7 @@ static const char *bl_list_eq[] = {
     "/dev/socket/adbd",
     "/sdcard/TWRP",
     "/storage/emulated/0/TWRP",
+    "Addon.d"
     "addon.d",
     ".TWRP",
     "TWRP",
