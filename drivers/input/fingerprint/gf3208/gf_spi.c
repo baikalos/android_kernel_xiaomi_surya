@@ -59,9 +59,9 @@
 
 #define WAKELOCK_HOLD_TIME 2000 /* in ms */
 #define FP_UNLOCK_REJECTION_TIMEOUT (WAKELOCK_HOLD_TIME - 500)
-#define GF_SPIDEV_NAME     "goodix,fingerprint"
+#define GF_SPIDEV_NAME      "goodix,fingerprint"
 /*device name after register in character*/
-#define GF_DEV_NAME            "goodix_fp"
+#define GF_DEV_NAME         "goodix_fp"
 #define	GF_INPUT_NAME	    "uinput-goodix"/*"goodix_fp" */
 
 #define	CHRD_DRIVER_NAME	"goodix_fp_spi"
@@ -100,7 +100,7 @@ static struct gf_key_map maps[] = {
 	{ EV_KEY, GF_NAV_INPUT_HEAVY },
 #endif
 };
-#endif
+#else
 struct gf_key_map maps[] = {
 	{ EV_KEY, KEY_HOME },
 	{ EV_KEY, KEY_MENU },
@@ -117,6 +117,7 @@ struct gf_key_map maps[] = {
 	{ EV_KEY, KEY_KPENTER },
 
 };
+#endif
 
 static void gf_enable_irq(struct gf_dev *gf_dev)
 {
@@ -274,57 +275,58 @@ static int gfspi_ioctl_clk_uninit(struct gf_dev *data)
 }
 #endif
 
+#if defined(SUPPORT_NAV_EVENT)
 static void nav_event_input(struct gf_dev *gf_dev, gf_nav_event_t nav_event)
 {
 	uint32_t nav_input = 0;
 
 	switch (nav_event) {
 	case GF_NAV_FINGER_DOWN:
-		pr_debug("%s nav finger down\n", __func__);
+		pr_info("%s nav finger down\n", __func__);
 		break;
 
 	case GF_NAV_FINGER_UP:
-		pr_debug("%s nav finger up\n", __func__);
+		pr_info("%s nav finger up\n", __func__);
 		break;
 
 	case GF_NAV_DOWN:
 		nav_input = GF_NAV_INPUT_DOWN;
-		pr_debug("%s nav down\n", __func__);
+		pr_info("%s nav down\n", __func__);
 		break;
 
 	case GF_NAV_UP:
 		nav_input = GF_NAV_INPUT_UP;
-		pr_debug("%s nav up\n", __func__);
+		pr_info("%s nav up\n", __func__);
 		break;
 
 	case GF_NAV_LEFT:
 		nav_input = GF_NAV_INPUT_LEFT;
-		pr_debug("%s nav left\n", __func__);
+		pr_info("%s nav left\n", __func__);
 		break;
 
 	case GF_NAV_RIGHT:
 		nav_input = GF_NAV_INPUT_RIGHT;
-		pr_debug("%s nav right\n", __func__);
+		pr_info("%s nav right\n", __func__);
 		break;
 
 	case GF_NAV_CLICK:
 		nav_input = GF_NAV_INPUT_CLICK;
-		pr_debug("%s nav click\n", __func__);
+		pr_info("%s nav click\n", __func__);
 		break;
 
 	case GF_NAV_HEAVY:
 		nav_input = GF_NAV_INPUT_HEAVY;
-		pr_debug("%s nav heavy\n", __func__);
+		pr_info("%s nav heavy\n", __func__);
 		break;
 
 	case GF_NAV_LONG_PRESS:
 		nav_input = GF_NAV_INPUT_LONG_PRESS;
-		pr_debug("%s nav long press\n", __func__);
+		pr_info("%s nav long press\n", __func__);
 		break;
 
 	case GF_NAV_DOUBLE_CLICK:
 		nav_input = GF_NAV_INPUT_DOUBLE_CLICK;
-		pr_debug("%s nav double click\n", __func__);
+		pr_info("%s nav double click\n", __func__);
 		break;
 
 	default:
@@ -340,6 +342,7 @@ static void nav_event_input(struct gf_dev *gf_dev, gf_nav_event_t nav_event)
 		input_sync(gf_dev->input);
 	}
 }
+#endif
 
 static irqreturn_t gf_irq(int irq, void *handle)
 {
@@ -386,11 +389,43 @@ static void irq_cleanup(struct gf_dev *gf_dev)
 	free_irq(gf_dev->irq, gf_dev);
 }
 
+static void gf_kernel_key_input(struct gf_dev *gf_dev, struct gf_key *gf_key)
+{
+	uint32_t key_input = 0;
+
+	if (gf_key->key == GF_KEY_HOME) {
+		key_input = KEY_KPENTER;
+	} else if (gf_key->key == GF_KEY_POWER) {
+		key_input = KEY_KPENTER;
+	} else if (gf_key->key == GF_KEY_CAMERA) {
+		key_input = GF_KEY_INPUT_CAMERA;
+	} else {
+		/* add special key define */
+		key_input = gf_key->key;
+	}
+	pr_info("%s: received key event[%d], key=%d, value=%d\n",
+			__func__, key_input, gf_key->key, gf_key->value);
+
+	if ((GF_KEY_POWER == gf_key->key || GF_KEY_CAMERA == gf_key->key)
+			&& (gf_key->value == 1)) {
+		input_report_key(gf_dev->input, key_input, 1);
+		input_sync(gf_dev->input);
+		input_report_key(gf_dev->input, key_input, 0);
+		input_sync(gf_dev->input);
+	}
+
+	if (gf_key->key == GF_KEY_HOME) {
+		input_report_key(gf_dev->input, key_input, gf_key->value);
+		input_sync(gf_dev->input);
+	}
+}
+
 static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct gf_dev *gf_dev = &gf;
+    struct gf_key gf_key;
 #if defined(SUPPORT_NAV_EVENT)
-	gf_nav_event_t nav_event = GF_NAV_NONE;
+    gf_nav_event_t nav_event = GF_NAV_NONE;
 #endif
 	int retval = 0;
 	u8 netlink_route = NETLINK_TEST;
@@ -408,7 +443,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case GF_IOC_INIT:
-		pr_debug("%s GF_IOC_INIT\n", __func__);
+		pr_info("%s GF_IOC_INIT\n", __func__);
 		if (copy_to_user((void __user *)arg, (void *)&netlink_route, sizeof(u8))) {
 			pr_err("GF_IOC_INIT failed\n");
 			retval = -EFAULT;
@@ -417,22 +452,31 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case GF_IOC_EXIT:
-		pr_debug("%s GF_IOC_EXIT\n", __func__);
+		pr_info("%s GF_IOC_EXIT\n", __func__);
 		break;
 
 	case GF_IOC_DISABLE_IRQ:
-		pr_debug("%s GF_IOC_DISABEL_IRQ\n", __func__);
+		pr_info("%s GF_IOC_DISABEL_IRQ\n", __func__);
 		gf_disable_irq(gf_dev);
 		break;
 
 	case GF_IOC_ENABLE_IRQ:
-		pr_debug("%s GF_IOC_ENABLE_IRQ\n", __func__);
+		pr_info("%s GF_IOC_ENABLE_IRQ\n", __func__);
 		gf_enable_irq(gf_dev);
 		break;
 
 	case GF_IOC_RESET:
-		pr_debug("%s GF_IOC_RESET\n", __func__);
+		pr_info("%s GF_IOC_RESET\n", __func__);
 		gf_hw_reset(gf_dev, 3);
+		break;
+
+    case GF_IOC_INPUT_KEY_EVENT:
+		if (copy_from_user(&gf_key, (void __user *)arg, sizeof(struct gf_key))) {
+        	pr_err("failed to copy input key event from user to kernel\n");
+    		retval = -EFAULT;
+	    	break;
+        }
+		gf_kernel_key_input(gf_dev, &gf_key);
 		break;
 
 #if defined(SUPPORT_NAV_EVENT)
@@ -449,11 +493,11 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #endif
 
 	case GF_IOC_ENABLE_SPI_CLK:
-		pr_debug("%s GF_IOC_ENABLE_SPI_CLK\n", __func__);
+		pr_info("%s GF_IOC_ENABLE_SPI_CLK\n", __func__);
 #ifdef AP_CONTROL_CLK
 		gfspi_ioctl_clk_enable(gf_dev);
 #else
-		pr_debug("doesn't support control clock!\n");
+		pr_info("doesn't support control clock!\n");
 #endif
 		break;
 
@@ -462,36 +506,36 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #ifdef AP_CONTROL_CLK
 		gfspi_ioctl_clk_disable(gf_dev);
 #else
-		pr_debug("doesn't support control clock!\n");
+		pr_info("doesn't support control clock!\n");
 #endif
 		break;
 
 	case GF_IOC_ENABLE_POWER:
-		pr_debug("%s GF_IOC_ENABLE_POWER\n", __func__);
+		pr_info("%s GF_IOC_ENABLE_POWER\n", __func__);
 		gf_power_on(gf_dev);
 		break;
 
 	case GF_IOC_DISABLE_POWER:
-		pr_debug("%s GF_IOC_DISABLE_POWER\n", __func__);
+		pr_info("%s GF_IOC_DISABLE_POWER\n", __func__);
 		gf_power_off(gf_dev);
 		break;
 
 	case GF_IOC_ENTER_SLEEP_MODE:
-		pr_debug("%s GF_IOC_ENTER_SLEEP_MODE\n", __func__);
+		pr_info("%s GF_IOC_ENTER_SLEEP_MODE\n", __func__);
 		break;
 
 	case GF_IOC_GET_FW_INFO:
-		pr_debug("%s GF_IOC_GET_FW_INFO\n", __func__);
+		pr_info("%s GF_IOC_GET_FW_INFO\n", __func__);
 		break;
 
 	case GF_IOC_REMOVE:
-		pr_debug("%s GF_IOC_REMOVE\n", __func__);
+		pr_info("%s GF_IOC_REMOVE\n", __func__);
 		//irq_cleanup(gf_dev);
 		//gf_cleanup(gf_dev);
 		break;
 
 	case GF_IOC_CHIP_INFO:
-		pr_debug("%s GF_IOC_CHIP_INFO\n", __func__);
+		pr_info("%s GF_IOC_CHIP_INFO\n", __func__);
 		if (copy_from_user(&info, (void __user *)arg, sizeof(struct gf_ioc_chip_info))) {
 			retval = -EFAULT;
 			break;
@@ -502,11 +546,11 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case GF_IOC_AUTHENTICATE_START:
-		pr_debug("%s GF_IOC_AUTHENTICATE_START\n", __func__);
+		pr_info("%s GF_IOC_AUTHENTICATE_START\n", __func__);
 		break;
 
 	case GF_IOC_AUTHENTICATE_END:
-		pr_debug("%s GF_IOC_AUTHENTICATE_END\n", __func__);
+		pr_info("%s GF_IOC_AUTHENTICATE_END\n", __func__);
 		break;
 
 	default:
@@ -590,6 +634,7 @@ static int gf_fasync(int fd, struct file *filp, int mode)
 	struct gf_dev *gf_dev = filp->private_data;
 	int ret;
 
+	pr_info("gf_fasync\n");
 	ret = fasync_helper(fd, filp, mode, &gf_dev->async);
 	pr_info("ret = %d\n", ret);
 	return ret;

@@ -131,11 +131,11 @@ err_input_register_handle:
 	return rc;
 }
 
-static bool input_filter(struct input_handle *handle, unsigned int type,
+/*static bool input_filter(struct input_handle *handle, unsigned int type,
 		unsigned int code, int value)
 {
 	return true;
-}
+}*/
 
 static void input_disconnect(struct input_handle *handle)
 {
@@ -694,7 +694,7 @@ static int fpc1020_probe(struct platform_device *pdev)
 	//wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
 	wakeup_source_init(&fpc1020->ttw_ws, "fpc_ttw_ws");//for kernel 4.9
 
-	fpc1020->input_handler.filter = input_filter;
+	// fpc1020->input_handler.filter = input_filter;
 	fpc1020->input_handler.connect = input_connect;
 	fpc1020->input_handler.disconnect = input_disconnect;
 	fpc1020->input_handler.name = FPC1020_NAME;
