@@ -104,6 +104,8 @@
 
 #include "../../lib/kstrtox.h"
 
+#include "../baikalfs.h"
+
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
  *	certainly an error.  Permission checks need to happen during
@@ -1807,6 +1809,9 @@ static int do_proc_readlink(struct path *path, char __user *buffer, int buflen)
 	if (!tmp)
 		return -ENOMEM;
 
+
+    //if( filter_out_path_vma( "do_proc_readlink", path) ) return -ENOENT;
+
 	pathname = d_path(path, tmp, PAGE_SIZE);
 	len = PTR_ERR(pathname);
 	if (IS_ERR(pathname))
@@ -2204,6 +2209,7 @@ struct map_files_info {
 	fmode_t		mode;
 	unsigned int	len;
 	unsigned char	name[4*sizeof(long)+2]; /* max: %lx-%lx\0 */
+    int         baikal_action;
 };
 
 /*
@@ -2287,6 +2293,11 @@ static struct dentry *proc_map_files_lookup(struct inode *dir,
 	vma = find_exact_vma(mm, vm_start, vm_end);
 	if (!vma)
 		goto out_no_vma;
+
+    if( filter_out_path_vma("proc_map_files_lookup",&vma->vm_file->f_path) ) {
+            result = -ENOENT;
+			goto out_no_vma; 
+    }
 
 	if (vma->vm_file)
 		result = proc_map_files_instantiate(dir, dentry, task,
@@ -2377,6 +2388,7 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
 			info.len = snprintf(info.name,
 					sizeof(info.name), "%lx-%lx",
 					vma->vm_start, vma->vm_end);
+            info.baikal_action = filter_out_path_vma("proc_map_files_readdir",&vma->vm_file->f_path);
 			if (flex_array_put(fa, i++, &info, GFP_KERNEL))
 				BUG();
 		}
@@ -2385,12 +2397,14 @@ proc_map_files_readdir(struct file *file, struct dir_context *ctx)
 
 	for (i = 0; i < nr_files; i++) {
 		p = flex_array_get(fa, i);
+        //if( p->baikal_action != 0 ) goto skip_proc_fill_cache;
 		if (!proc_fill_cache(file, ctx,
 				      p->name, p->len,
 				      proc_map_files_instantiate,
 				      task,
 				      (void *)(unsigned long)p->mode))
 			break;
+skip_proc_fill_cache:
 		ctx->pos++;
 	}
 	if (fa)

@@ -26,6 +26,8 @@
 #include <asm/tlbflush.h>
 #include "internal.h"
 
+#include "../baikalfs.h"
+
 void task_mem(struct seq_file *m, struct mm_struct *mm)
 {
 	unsigned long text, lib, swap, ptes, pmds, anon, file, shmem;
@@ -377,9 +379,14 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 	 * special [heap] marker for the heap:
 	 */
 	if (file) {
-		seq_pad(m, ' ');
-		seq_file_path(m, file, "\n");
-		goto done;
+        if( !filter_out_path_vma( "show_map_vma", &file->f_path) ) {
+    		seq_pad(m, ' ');
+	    	seq_file_path(m, file, "\n");
+            goto done;
+        } else {
+            name = "[vdso]";
+            goto done;
+        }
 	}
 
 	if (vma->vm_ops && vma->vm_ops->name) {

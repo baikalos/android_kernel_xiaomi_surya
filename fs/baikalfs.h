@@ -16,6 +16,9 @@
 
 extern int filter_out(const char *tag, const char *name);
 extern int filter_out_path(const char *tag, const struct path* const file);
+extern int filter_out_path_vma(const char *tag, const struct path* const file);
 extern int filter_out_mount(const char *tag, struct vfsmount* const mnt, const struct path* const root);
+
+extern int filter_out_path_type(const char *tag, const struct path* const file, int type);
 
 #endif /* BAIKALFS_H */

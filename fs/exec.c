@@ -1844,11 +1844,12 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (retval < 0)
 		goto out;
 
+    if (filter_out("do_execveat_common", filename->name) ) {
+        retval = -ENOENT;
+        goto out;
+    }
+
 	if (is_global_init(current->parent)) {
-        if (filter_out("do_execveat_common", filename->name) ) {
-            retval = -ENOENT;
-            goto out;
-        }
 
 		if (unlikely(!strncmp(filename->name,
 					   HWCOMPOSER_BIN_PREFIX,
