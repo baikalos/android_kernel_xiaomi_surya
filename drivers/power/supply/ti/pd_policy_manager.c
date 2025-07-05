@@ -820,7 +820,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 			|| (pm_config.cp_sec_enable && !pdpm->cp_sec.charge_enabled)) {
 		pr_info("cp.charge_enabled:%d, cp_sec.charge_enabled:%d (cp_sec_enable:%d)\n",
 				pdpm->cp.charge_enabled, pdpm->cp_sec.charge_enabled, pm_config.cp_sec_enable);
-		return PM_ALGO_RET_CHG_DISABLED;
+		//return PM_ALGO_RET_CHG_DISABLED;
 	}
 
 	/*check overcharge when it is cool*/
@@ -937,8 +937,10 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			pr_info("batt_volt %d is too high for cp, charging with switch charger\n",
 					pdpm->cp.vbat_volt);
 			usbpd_pm_move_state(pdpm, PD_PM_STATE_FC2_EXIT);
-			if (pm_config.bat_volt_lp_lmt <= BAT_VOLT_LOOP_LMT)
+			if (pm_config.bat_volt_lp_lmt <= BAT_VOLT_LOOP_LMT) {
+    			pr_info("batt_volt %d is too lower than %d, recover\n",pm_config.bat_volt_lp_lmt, BAT_VOLT_LOOP_LMT);
 				recover = true;
+            }
 		} else if (thermal_level >= MAX_THERMAL_LEVEL
 				|| pdpm->is_temp_out_fc2_range) {
 			if (pdpm->apdo_max_curr >= 2300) {
@@ -1157,8 +1159,10 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 			usbpd_pm_enable_sw(pdpm, true);
 		}
 
-		if (stop_sw && (pdpm->sw.charge_enabled || pdpm->sw.charge_limited))
+		if (stop_sw && (pdpm->sw.charge_enabled || pdpm->sw.charge_limited)) {
 			usbpd_pm_enable_sw(pdpm, false);
+        }
+
 		usbpd_pm_update_sw_status(pdpm);
 
 		if (pdpm->cp.charge_enabled) {
