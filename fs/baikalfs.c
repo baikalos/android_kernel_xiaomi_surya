@@ -98,9 +98,9 @@ static inline bool is_filtered_uid(uid_t uid) {
 
 static void print_debug(const char *tag, const char *name) {
 
-    if( name == NULL ) return;
-
     uid_t uid = get_cur_uid();
+
+    if( name == NULL ) return;
 
     if( filter_debug_all != 0 || 
         (filter_debug_user != 0 && uid >= 10000 ) ||
@@ -114,10 +114,10 @@ static const char* bl_list_mount_types[] = {
     NULL
 };
 
-static const char* bl_list_mounts_add[] = {
-	"/apex/",
-    NULL
-};
+//static const char* bl_list_mounts_add[] = {
+//	/*"/apex/",*/
+//    NULL
+//};
 
 
 static const char* bl_list_mounts[] = {
@@ -166,7 +166,6 @@ static const char *bl_list_ends[] = {
 };
 
 static const char *bl_list_contains[] = {
-    "adbd",
     "zygisk",
     "magisk",
     "system/addon.d",
@@ -392,6 +391,8 @@ int filter_out_mount(const char *tag, struct vfsmount* const mnt, const struct p
 		.mnt = mnt
 	};
 
+    if( !mnt || !root ) return 0;
+
     if( !filter_from_user_apps || is_root_uid() ) return 0;
 
     path = kmalloc(size, GFP_KERNEL);
@@ -439,7 +440,7 @@ int filter_out_mount(const char *tag, struct vfsmount* const mnt, const struct p
     }
 
 
-    if( !res && is_add_uid(get_cur_uid()) ) res = check_list(bl_list_mounts_add,path,0);
+    //if( !res && is_add_uid(get_cur_uid()) ) res = check_list(bl_list_mounts_add,path,0);
 
     if (res) {
         pr_info("filter_out_mount blocked from %s name=%s (%d)", tag, path, get_cur_uid());
