@@ -4163,7 +4163,8 @@ static void __setscheduler_params(struct task_struct *p,
 	if (policy == SETPARAM_POLICY)
 		policy = p->policy;
 
-	p->policy = policy;
+	//p->policy = policy;
+	p->policy = policy == SCHED_RR ? SCHED_FIFO : policy;
 
 	if (dl_policy(policy))
 		__setparam_dl(p, attr);

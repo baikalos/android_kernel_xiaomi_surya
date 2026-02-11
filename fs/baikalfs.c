@@ -187,6 +187,7 @@ static const char *bl_list_contains[] = {
     "/vendor/etc/vintf/manifest/vendor.lineage",
     "apatch",
     "/etc/init/init.lineage",
+    "/system/xbin",
     NULL
 };
 
