@@ -627,6 +627,7 @@ struct smb_charger {
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;
 	int			system_temp_level;
+	int			requested_system_temp_level;
 	int			thermal_levels;
 	int			*thermal_mitigation;
 	int			dcp_icl_ua;

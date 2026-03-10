@@ -56,6 +56,9 @@
 
 static void update_sw_icl_max(struct smb_charger *chg, int pst);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
+static void _update_system_thermal_level(struct smb_charger *chg, int batt_temp);
+int get_sconfig(void);
+
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val)
 {
@@ -853,7 +856,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	if (!chg->bms_psy)
 		return 0;
 
-#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
+/*#ifdef CONFIG_BATT_VERIFY_BY_DS28E16
 	rc = power_supply_get_property(chg->bms_psy,
 				POWER_SUPPLY_PROP_AUTHENTIC, &pval);
 	if (rc < 0) {
@@ -862,7 +865,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	}
 	if (!pval.intval)
 		enable = false;
-#endif
+#endif*/
 
 	/*if soc > 90 do not set fastcharge flag*/
 	rc = power_supply_get_property(chg->bms_psy,
@@ -872,7 +875,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 		goto set_term;
 	}
 
-	if (enable && pval.intval >= 90) {
+	if (enable && pval.intval >= 98) {
 		smblib_dbg(chg, PR_MISC, "soc:%d is more than 90"
 			"do not setfastcharge mode\n", pval.intval);
 		enable = false;
@@ -885,7 +888,7 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 			return rc;
 	}
 
-	if (enable && (pval.intval >= 480 || pval.intval <= 150)) {
+	if (enable && (pval.intval >= 480 /*|| pval.intval <= 150*/)) {
 			smblib_dbg(chg, PR_MISC, "temp:%d is abort"
 							"do not setfastcharge mode\n", pval.intval);
 			enable = false;
@@ -1117,6 +1120,10 @@ int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua)
 
 	return 0;
 }
+
+static int prev_batt_temp = 0;
+static int prev_sconfig = -10;
+
 int smblib_get_prop_from_bms(struct smb_charger *chg,
 				enum power_supply_property psp,
 				union power_supply_propval *val)
@@ -1128,8 +1135,31 @@ int smblib_get_prop_from_bms(struct smb_charger *chg,
 
 	rc = power_supply_get_property(chg->bms_psy, psp, val);
 
+    if( psp == POWER_SUPPLY_PROP_TEMP ) {
+        if( prev_batt_temp != val->intval ) {
+            prev_batt_temp = val->intval;   
+            _update_system_thermal_level(chg,val->intval);
+        }
+
+        int sconfig = get_sconfig();
+        if( prev_sconfig != sconfig ) {
+            prev_sconfig = sconfig;
+            _update_system_thermal_level(chg,val->intval);
+        }
+    }
+
+
 	return rc;
 }
+
+static void _update_system_thermal_level(struct smb_charger *chg, int batt_temp) {
+
+    union power_supply_propval prev_lvl;
+    prev_lvl.intval = chg->requested_system_temp_level;
+
+    smblib_set_prop_system_temp_level(chg, &prev_lvl);
+}
+
 
 void smblib_apsd_enable(struct smb_charger *chg, bool enable)
 {
@@ -1277,6 +1307,7 @@ static int smblib_notifier_call(struct notifier_block *nb,
 	struct smb_charger *chg = container_of(nb, struct smb_charger, nb);
 
 	if (!strcmp(psy->desc->name, "bms")) {
+    	smblib_err(chg, "bms notifier");
 		if (!chg->bms_psy)
 			chg->bms_psy = psy;
 		if (ev == PSY_EVENT_PROP_CHANGED) {
@@ -1284,11 +1315,14 @@ static int smblib_notifier_call(struct notifier_block *nb,
 		}
 	}
 
-	if (chg->jeita_configured == JEITA_CFG_NONE)
+	if (chg->jeita_configured == JEITA_CFG_NONE) {
+    	smblib_err(chg, "jeita notifier");
 		schedule_work(&chg->jeita_update_work);
+    }
 
 	if (chg->sec_pl_present && !chg->pl.psy
 		&& !strcmp(psy->desc->name, "parallel")) {
+    	smblib_err(chg, "parallel notifier");
 		chg->pl.psy = psy;
 		schedule_work(&chg->pl_update_work);
 	}
@@ -1523,6 +1557,11 @@ static int set_sdp_current(struct smb_charger *chg, int icl_ua)
 	int rc;
 	u8 icl_options;
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
+
+    if (icl_ua == USBIN_500MA)
+    {
+        icl_ua = USBIN_900MA;
+    }
 
 	/* power source is SDP */
 	switch (icl_ua) {
@@ -2116,9 +2155,11 @@ int smblib_vbus_regulator_is_enabled(struct regulator_dev *rdev)
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	val->intval
+	/*val->intval
 		= (get_client_vote(chg->usb_icl_votable, USER_VOTER) == 0)
-		 && get_client_vote(chg->dc_suspend_votable, USER_VOTER);
+		 && get_client_vote(chg->dc_suspend_votable, USER_VOTER);*/
+
+    val->intval = is_client_vote_enabled(chg->chg_disable_votable, USER_VOTER);
 	return 0;
 }
 
@@ -2463,6 +2504,7 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
 	union power_supply_propval pval;
+	union power_supply_propval pval1;
 	int rc;
 	int effective_fv_uv;
 	u8 stat;
@@ -2485,12 +2527,12 @@ int smblib_get_prop_batt_health(struct smb_charger *chg,
 			 * treat it as overvoltage.
 			 */
                         rc = power_supply_get_property(chg->bms_psy,
-                                                       POWER_SUPPLY_PROP_TEMP, &pval);
+                                                       POWER_SUPPLY_PROP_TEMP, &pval1);
                         if (rc < 0) {
                                 smblib_err(chg, "Couldn't get bms temp:%d\n", rc);
                                 return rc;
                         }
-                        if (pval.intval>151 && pval.intval<480){
+                        if (pval1.intval>151 && pval1.intval<480){
                                 smblib_dbg(chg, PR_MISC, "temp:%d is abort"
                                            "do not  set step charge work\n", pval.intval);
                                 effective_fv_uv = 4480000;
@@ -2750,7 +2792,15 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 {
 	int rc;
 
-	/* vote 0mA when suspended */
+	rc = vote(chg->chg_disable_votable, USER_VOTER, (bool)val->intval, 0);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
+			(bool)val->intval ? "suspend" : "resume", rc);
+		return rc;
+	}
+
+    /*
+	/ * vote 0mA when suspended * /
 	rc = vote(chg->usb_icl_votable, USER_VOTER, (bool)val->intval, 0);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
@@ -2767,6 +2817,7 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 
 	if (chg->use_bq_pump)
 		chg->bq_input_suspend = !!(val->intval);
+    */
 
 	power_supply_changed(chg->batt_psy);
 	return rc;
@@ -2832,9 +2883,14 @@ extern bool lct_backlight_off;
 extern int LctIsInCall;
 extern int LctThermal;
 
+
 int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 				const union power_supply_propval *val)
 {
+    union power_supply_propval rval;
+
+	chg->requested_system_temp_level = val->intval;
+
 	if (val->intval < 0)
 		return -EINVAL;
 
@@ -2844,30 +2900,45 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	if (val->intval > chg->thermal_levels)
 		return -EINVAL;
 
-	pr_info("%s val=%d, chg->system_temp_level=%d, LctThermal=%d, lct_backlight_off= %d, IsInCall=%d \n " 
-		,__FUNCTION__,val->intval,chg->system_temp_level, LctThermal, lct_backlight_off, LctIsInCall);
+    int val_intval = val->intval;
+
+
+    int rc = power_supply_get_property(chg->bms_psy,
+					POWER_SUPPLY_PROP_TEMP, &rval);
+
+    int batt_temp = -1; 
+
+    if( !rc ) {
+        batt_temp = rval.intval/10;
+        /*if( get_sconfig() == 0 && batt_temp < 40 )  {
+            val_intval = 0;
+        }*/
+    }   
+
+	pr_info("%s profile=%d, batt_temp=%d, val=%d, val_intval=%d, chg->system_temp_level=%d, LctThermal=%d, lct_backlight_off= %d, IsInCall=%d \n " 
+		,__FUNCTION__,get_sconfig(), batt_temp, val->intval,val_intval,chg->system_temp_level, LctThermal, lct_backlight_off, LctIsInCall);
 
 	if (LctThermal == 0) { //from therml-engine always store lvl_sel
-		lct_therm_lvl_reserved.intval = val->intval;
+		lct_therm_lvl_reserved.intval = val_intval;
 	}
 
 	/*backlight off and not-incall*/
-	if ((lct_backlight_off) && (LctIsInCall == 0) && (val->intval > LCT_THERM_LCDOFF_LEVEL)) {
-		pr_info("leve ignored:backlight_off:%d level:%d",lct_backlight_off,val->intval);
+	if ((lct_backlight_off) && (LctIsInCall == 0) && (val_intval > LCT_THERM_LCDOFF_LEVEL)) {
+		pr_info("leve ignored:backlight_off:%d level:%d",lct_backlight_off,val_intval);
 		return 0;
 	}
 
-	if ((LctIsInCall == 1) && (val->intval != LCT_THERM_CALL_LEVEL)) {
-		pr_info("leve ignored:LctIsInCall:%d level:%d",LctIsInCall,val->intval);
+	if ((LctIsInCall == 1) && (val_intval != LCT_THERM_CALL_LEVEL)) {
+		pr_info("leve ignored:LctIsInCall:%d level:%d",LctIsInCall,val_intval);
 		return 0;
 	}
 
-	if (val->intval == chg->system_temp_level)
+	if (val_intval == chg->system_temp_level)
 		return 0;
 
-	chg->system_temp_level = val->intval;
+	chg->system_temp_level = val_intval;
 	pr_info("%s intval:%d system temp level:%d thermal_levels:%d",
-		__FUNCTION__,val->intval,chg->system_temp_level,chg->thermal_levels);
+		__FUNCTION__,val_intval,chg->system_temp_level,chg->thermal_levels);
 
 	if (chg->system_temp_level == chg->thermal_levels)
 		return vote(chg->chg_disable_votable,
@@ -6834,8 +6905,8 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 				|| chg->batt_profile_fcc_ua <= QC_CLASS_A_CURRENT_UA) {
 			pr_info("qc_class_a charger is detected, batt_profile_fcc=%d\n", chg->batt_profile_fcc_ua);
 			chg->is_qc_class_a = true;
-			vote(chg->fcc_votable,
-					CLASSA_QC_FCC_VOTER, true, QC_CLASS_A_CURRENT_UA);
+			//vote(chg->fcc_votable,
+			//		CLASSA_QC_FCC_VOTER, true, QC_CLASS_A_CURRENT_UA);
 		} else {
 			chg->is_qc_class_b = true;
 			pr_info("qc_class_b charger is detected\n");

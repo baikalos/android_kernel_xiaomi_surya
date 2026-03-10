@@ -78,6 +78,11 @@ static struct thermal_governor *def_governor;
 
 static struct workqueue_struct *thermal_passive_wq;
 
+int get_sconfig(void) 
+{ 
+    return atomic_read(&switch_mode); 
+}
+
 /*
  * Governor section: set of functions to handle thermal governors
  *
